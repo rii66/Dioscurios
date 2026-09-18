@@ -5,10 +5,10 @@
 #define WIFI_STA_TX_POWER WIFI_POWER_8_5dBm
 #define WIFI_AP_TX_POWER  WIFI_POWER_17dBm
 
-#define WIFI_SSID_1 "ICA ELEK"
+#define WIFI_SSID_1 "wifi ssid"
 #define WIFI_PASS_1 "koyok tekek"
 
-#define WIFI_SSID_2 "Indirom"
+#define WIFI_SSID_2 "wifi ssid"
 #define WIFI_PASS_2 "1sampai8"
 
 #define AP_SSID "DioscuriStationOS"
