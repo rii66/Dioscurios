@@ -25,54 +25,27 @@
 #include "config.h"
 #include <Arduino.h>
 
-// =====================================================
-// NETWORK
-// =====================================================
-
 #include <WiFi.h>
 #include <WebServer.h>
 #include <WebSocketsServer.h>
 #include <ArduinoOTA.h>
-
-// =====================================================
-// CERBERUS / STATIONS
-// =====================================================
-
+//
 #include <cerberus.h>
 #include <meadows.h>
-
 #include <PolluxS.h>
 #include <CastorS.h>
-
+// 
 #include <U8g2lib.h>
 #include <Wire.h>
 
-
-// =====================================================
-// OLED
-// =====================================================
-
-// OLED object — library pakai extern,
-// jadi wajib di-define di sketch.
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C
 u8g2(
     U8G2_R0,
     /* reset = */ U8X8_PIN_NONE
 );
 
-
-// =====================================================
-// NETWORK OBJECTS
-// =====================================================
-
 extern WebServer server;
 extern WebSocketsServer webSocket;
-
-
-// =====================================================
-// NETWORK PROTOTYPES
-// Jaga-jaga ArduinoDroid / nested include
-// =====================================================
 
 void initWiFi();
 void setupOTA();
@@ -83,8 +56,7 @@ void sendLiveData();
 
 // =====================================================
 // HELPER
-// =====================================================
-
+// 
 // buttonClicked dideclare di encoder.h
 // tetapi belum diimplementasi di encoder.cpp.
 //
@@ -93,137 +65,68 @@ void sendLiveData();
 bool buttonClicked() {
 
     static bool last = false;
-
     bool now = buttonPressed();
-
     bool clicked =
         (now && !last);
-
     last = now;
-
     return clicked;
 }
 
-
 // =====================================================
-// SETUP
-// =====================================================
-
 void setup() {
-
     Serial.begin(115200);
-
     delay(200);
-
     Serial.println();
     Serial.println(
         F("========== DioscuriOs Dual Firmware ==========")
     );
 
-
-    // =================================================
     // 1. STORAGE
-    // =================================================
-
     storage.begin();
 
-
-    // =================================================
     // 2. INPUT
-    // =================================================
-
     initEncoder();
     initMotion();
 
-
-    // =================================================
     // 3. DISPLAY
-    // =================================================
-
     initDisplay();
-
-
-    // =================================================
-    // 4. STATIONS
-    // =================================================
-    // Solder:
-    //   PWM / PTC / temperature
-    //
-    // Hot Air:
-    //   handler + zero-cross interrupt
-
+    
+    // 4. STATION 
     initStations();
 
-
-    // =================================================
-    // 5. LOAD SETTINGS
-    // =================================================
-
+    // 5. LOAD 
     loadSettings();
     loadPID();
-
-
-    // Default tip profile:
-    // T12
-    //
-    // supaya maxTemp / Kp / Ki / Kd
-    // terisi dengan benar.
-
-    setTipProfile(0);
-
-
-    // =================================================
+    //setTipProfile(0); // aktifkan jika eror di kp/ki/kd
+    
     // 6. NETWORK
-    // =================================================
-
     initWiFi();
     setupOTA();
     initWebServer();
     initWebSocket();
 
-
-    // =================================================
     // 7. BOOT ANIMATION
-    // =================================================
-
+    booting = true;
     playBootAnimation();
-
     booting = false;
-
-
-    // =================================================
+    
     // INITIAL ACTIVITY TIMER
-    // =================================================
-
     lastMotion   = millis();
     lastActivity = millis();
     sleepTimer   = millis();
-
-
-    // =================================================
+    
     // DEBUG
-    // =================================================
-
     Serial.println(
         F("[OK] Setup selesai — dual station + network ready")
     );
-
     Serial.printf(
         "[MODE] activeStation = %d (0=Solder 1=HotAir)\n",
         activeStation
     );
 }
 
-
-// =====================================================
-// LOOP
-// =====================================================
-
+// =================================================
 void loop() {
-
-    // =================================================
-    // READ EC11
-    // =================================================
 
     int delta =
         getEncoderDelta();
@@ -231,27 +134,8 @@ void loop() {
     bool pressed =
         buttonPressed();
 
-
-    // =================================================
-    // MOTION / AUTO SLEEP
-    // =================================================
-
     updateMotion();
 
-
-    // =================================================
-    // ALL EC11 INPUT
-    // =================================================
-    //
-    // Dashboard + Menu semuanya lewat handleMenu().
-    //
-    // Jangan panggil lagi:
-    //   castorS.encoder()
-    //   polluxS.encoder()
-    //   handleAirButton()
-    //
-    // dari sini.
-    //
     // handleMenu() sekarang menangani:
     //
     // SOLDER DASHBOARD
@@ -269,73 +153,33 @@ void loop() {
     //   rotate  -> navigation / edit
     //   click   -> select / confirm
     //
-
     handleMenu(
         delta,
         pressed
     );
 
-
-    // =================================================
-    // RUNTIME UPDATE
-    // =================================================
-
-    // -------------------------------------------------
-    // SOLDER
-    // -------------------------------------------------
-
     detectTip();
-
     castorS.update();
-    // updateBoost() + updatePID()
-
-
-    // -------------------------------------------------
-    // HOT AIR
-    // -------------------------------------------------
-
+    // updateBoost + updatePID
     updateAirHandler();
-    // polluxS.update()
 
-
-    // =================================================
     // NETWORK
-    // =================================================
-
     ArduinoOTA.handle();
-
     server.handleClient();
-
     webSocket.loop();
 
-
-    // =================================================
-    // WEBSOCKET LIVE DATA
-    // ~5 Hz
-    // =================================================
-
+    // WEBSOCKET LIVE DATA ~5 Hz
     static unsigned long lastWs = 0;
-
     if (
         millis() - lastWs >= 200
     ) {
-
         lastWs = millis();
-
         sendLiveData();
     }
 
+    // OPTIONAL SERIAL DEBUG Off
+    printStationStatus();
 
-    // =================================================
-    // OPTIONAL SERIAL DEBUG
-    // =================================================
-
-    // printStationStatus();
-
-
-    // =================================================
     // OLED UI
-    // =================================================
-
     drawUI();
 }
