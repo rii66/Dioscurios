@@ -1,4 +1,5 @@
 #include "ptc.h"
+#include "GlobalState.h"
 #include <Arduino.h>
 
 // ====================================================================
